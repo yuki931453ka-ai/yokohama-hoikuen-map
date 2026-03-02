@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>横浜市 保育園マップ 🍀</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <!-- Leaflet MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
+  <!-- アプリ CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ========================================
+     ローディングオーバーレイ
+     ======================================== -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">読み込み中...</div>
+</div>
+
+<!-- エラーメッセージ -->
+<div id="error-msg"></div>
+
+<!-- ========================================
+     ヘッダー
+     ======================================== -->
+<header id="header">
+  <div id="header-logo">🍀 横浜保育園マップ</div>
+
+  <div id="filter-bar">
+    <!-- 施設種別 -->
+    <button class="filter-btn filter-type-btn active" data-type="all">全種別</button>
+    <button class="filter-btn filter-type-btn" data-type="認可保育所">認可保育所</button>
+    <button class="filter-btn filter-type-btn" data-type="小規模保育">小規模保育</button>
+
+    <!-- 区 -->
+    <select class="filter-select" id="filter-ward">
+      <option value="all">全ての区</option>
+    </select>
+
+    <!-- 空き状況 -->
+    <button class="filter-btn filter-status-btn active" data-status="all">全ての状況</button>
+    <button class="filter-btn filter-status-btn" data-status="ok">空きあり</button>
+    <button class="filter-btn filter-status-btn" data-status="waiting">待ちあり</button>
+
+    <!-- 年齢フィルター -->
+    <div id="age-filter" style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
+      <span style="font-size:12px; color:#888; white-space:nowrap;">年齢:</span>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
+        <input type="checkbox" class="filter-age-cb" value="０歳"> 0歳
+      </label>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
+        <input type="checkbox" class="filter-age-cb" value="１歳"> 1歳
+      </label>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
+        <input type="checkbox" class="filter-age-cb" value="２歳"> 2歳
+      </label>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
+        <input type="checkbox" class="filter-age-cb" value="３歳"> 3歳
+      </label>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
+        <input type="checkbox" class="filter-age-cb" value="４歳"> 4歳
+      </label>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
+        <input type="checkbox" class="filter-age-cb" value="５歳"> 5歳
+      </label>
+    </div>
+
+    <!-- 検索 -->
+    <input type="text" id="search-input" placeholder="🔍 施設名・住所で検索">
+  </div>
+</header>
+
+<!-- ========================================
+     年度スライダー
+     ======================================== -->
+<div id="year-bar">
+  <span style="font-size:12px; color:#888; white-space:nowrap;">年度:</span>
+  <div class="year-steps" id="year-steps"></div>
+  <input type="range" id="year-slider" min="0" max="3" value="3" step="1">
+  <span id="year-label" style="font-weight:700; color:var(--color-primary); font-size:15px; min-width:72px; text-align:center;">令和8年</span>
+</div>
+
+<!-- ========================================
+     メインコンテンツ
+     ======================================== -->
+<div id="app">
+
+  <!-- 地図 -->
+  <div id="map-container">
+    <div id="map"></div>
+
+    <!-- 統計バッジ -->
+    <div id="map-stats">
+      <div class="stat-badge">
+        <div class="stat-dot" style="background:var(--color-ok)"></div>
+        空きあり <strong id="stat-ok">0</strong>件
+      </div>
+      <div class="stat-badge">
+        <div class="stat-dot" style="background:var(--color-full)"></div>
+        満員 <strong id="stat-full">0</strong>件
+      </div>
+      <div class="stat-badge">
+        <div class="stat-dot" style="background:var(--color-waiting)"></div>
+        待ちあり <strong id="stat-waiting">0</strong>件
+      </div>
+    </div>
+
+    <!-- 凡例 -->
+    <div id="map-legend">
+      <div class="legend-item">
+        <div class="legend-dot dot-ok"></div>
+        <span>空きあり</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot dot-full"></div>
+        <span>満員</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot dot-waiting"></div>
+        <span>待ちあり</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- サイドパネル -->
+  <aside id="sidebar">
+
+    <!-- モバイル用ドロワーハンドル -->
+    <div id="drawer-handle">
+      <div class="handle-bar"></div>
+    </div>
+
+    <!-- タブ -->
+    <div id="sidebar-tabs">
+      <button class="tab-btn active" data-tab="list">施設リスト</button>
+      <button class="tab-btn" data-tab="rank_ok">空きランキング</button>
+      <button class="tab-btn" data-tab="rank_wait">人気ランキング</button>
+    </div>
+
+    <!-- ソートバー -->
+    <div id="sort-bar">
+      <label>並び順:</label>
+      <select id="sort-select">
+        <option value="name">施設名順</option>
+        <option value="ward">区順</option>
+        <option value="ok">空き数が多い順</option>
+        <option value="wait">待ち数が多い順</option>
+      </select>
+    </div>
+
+    <!-- 施設リスト -->
+    <div id="facility-list">
+      <div class="empty-state">
+        <div class="empty-state-icon">🗺️</div>
+        <div class="empty-state-text">読み込み中...</div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ========================================
+     スクリプト
+     ======================================== -->
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Leaflet MarkerCluster -->
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<!-- アプリ JS -->
+<script src="app.js"></script>
+
+</body>
+</html>
