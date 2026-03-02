@@ -30,8 +30,27 @@ const YEARS = [
 ];
 const DEFAULT_YEAR_IDX = 3;  // 令和8年をデフォルト
 
-// enmikke.jp の施設ページURL（施設番号でリンク）
-const ENMIKKE_URL = (id) => `https://www.enmikke.jp/hoikusho/${id}/`;
+// 区ごとの横浜市公式保育所案内ページ
+const WARD_OFFICIAL_URLS = {
+  "鶴見区":    "https://www.city.yokohama.lg.jp/tsurumi/kurashi/kosodatekyoiku/hoikusho/",
+  "神奈川区":  "https://www.city.yokohama.lg.jp/kanagawa/kurashi/kosodatekyoiku/hoikusho/",
+  "西区":      "https://www.city.yokohama.lg.jp/nishi/kurashi/kosodatekyoiku/hoikusho/",
+  "中区":      "https://www.city.yokohama.lg.jp/naka/kurashi/kosodatekyoiku/hoikusho/",
+  "南区":      "https://www.city.yokohama.lg.jp/minami/kurashi/kosodatekyoiku/hoikusho/",
+  "港南区":    "https://www.city.yokohama.lg.jp/konan/kurashi/kosodatekyoiku/hoikusho/",
+  "保土ケ谷区":"https://www.city.yokohama.lg.jp/hodogaya/kurashi/kosodatekyoiku/hoikusho/",
+  "旭区":      "https://www.city.yokohama.lg.jp/asahi/kurashi/kosodatekyoiku/hoikusho/",
+  "磯子区":    "https://www.city.yokohama.lg.jp/isogo/kurashi/kosodatekyoiku/hoikusho/",
+  "金沢区":    "https://www.city.yokohama.lg.jp/kanazawa/kurashi/kosodatekyoiku/hoikusho/",
+  "港北区":    "https://www.city.yokohama.lg.jp/kohoku/kurashi/kosodatekyoiku/hoikusho/",
+  "緑区":      "https://www.city.yokohama.lg.jp/midori/kurashi/kosodatekyoiku/hoikusho/",
+  "青葉区":    "https://www.city.yokohama.lg.jp/aoba/kurashi/kosodatekyoiku/hoikusho/",
+  "都筑区":    "https://www.city.yokohama.lg.jp/tsuzuki/kurashi/kosodatekyoiku/hoikusho/",
+  "戸塚区":    "https://www.city.yokohama.lg.jp/totsuka/kurashi/kosodatekyoiku/hoikusho/",
+  "栄区":      "https://www.city.yokohama.lg.jp/sakae/kurashi/kosodatekyoiku/hoikusho/",
+  "泉区":      "https://www.city.yokohama.lg.jp/izumi/kurashi/kosodatekyoiku/hoikusho/",
+  "瀬谷区":    "https://www.city.yokohama.lg.jp/seya/kurashi/kosodatekyoiku/hoikusho/",
+};
 
 // ========================================
 // アプリ状態
@@ -213,6 +232,23 @@ function initUI() {
   if (drawerHandle) {
     drawerHandle.addEventListener("click", () => {
       sidebar.classList.toggle("open");
+    });
+  }
+
+  // モバイル用フィルタートグル
+  const filterToggleBtn = document.getElementById("filter-toggle-btn");
+  const filterBar = document.getElementById("filter-bar");
+  if (filterToggleBtn && filterBar) {
+    filterToggleBtn.addEventListener("click", () => {
+      const isOpen = filterBar.classList.toggle("open");
+      filterToggleBtn.textContent = isOpen ? "✕ 閉じる" : "🔧 絞込";
+    });
+    // フィルター変更時にパネルを閉じる（UX向上）
+    filterBar.addEventListener("change", () => {
+      if (window.innerWidth <= 768) {
+        filterBar.classList.remove("open");
+        filterToggleBtn.textContent = "🔧 絞込";
+      }
     });
   }
 }
@@ -428,7 +464,7 @@ function createPopupContent(f, totals) {
         </tr>
       </tbody>
     </table>
-    ${f.id ? `<a class="popup-link" href="${ENMIKKE_URL(f.id)}" target="_blank" rel="noopener">enmikke.jp で詳細を見る ↗</a>` : ""}
+    ${f.ward && WARD_OFFICIAL_URLS[f.ward] ? `<a class="popup-link" href="${WARD_OFFICIAL_URLS[f.ward]}" target="_blank" rel="noopener">🏛️ ${escHtml(f.ward)}の公式保育所案内 ↗</a>` : ""}
   `;
   return el;
 }

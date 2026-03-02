@@ -39,11 +39,16 @@
 <header id="header">
   <div id="header-logo">🍀 横浜保育園マップ</div>
 
+  <!-- スマホ専用：フィルター開閉ボタン -->
+  <button id="filter-toggle-btn">🔧 絞込</button>
+
   <div id="filter-bar">
     <!-- 施設種別 -->
-    <button class="filter-btn filter-type-btn active" data-type="all">全種別</button>
-    <button class="filter-btn filter-type-btn" data-type="認可保育所">認可保育所</button>
-    <button class="filter-btn filter-type-btn" data-type="小規模保育">小規模保育</button>
+    <div class="filter-type-group">
+      <button class="filter-btn filter-type-btn active" data-type="all">全種別</button>
+      <button class="filter-btn filter-type-btn" data-type="認可保育所">認可保育所</button>
+      <button class="filter-btn filter-type-btn" data-type="小規模保育">小規模保育</button>
+    </div>
 
     <!-- 区 -->
     <select class="filter-select" id="filter-ward">
@@ -51,31 +56,21 @@
     </select>
 
     <!-- 空き状況 -->
-    <button class="filter-btn filter-status-btn active" data-status="all">全ての状況</button>
-    <button class="filter-btn filter-status-btn" data-status="ok">空きあり</button>
-    <button class="filter-btn filter-status-btn" data-status="waiting">待ちあり</button>
+    <div class="filter-status-group">
+      <button class="filter-btn filter-status-btn active" data-status="all">全ての状況</button>
+      <button class="filter-btn filter-status-btn" data-status="ok">空きあり</button>
+      <button class="filter-btn filter-status-btn" data-status="waiting">待ちあり</button>
+    </div>
 
     <!-- 年齢フィルター -->
-    <div id="age-filter" style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
+    <div id="age-filter" style="display:flex; gap:4px; align-items:center; flex-shrink:0; flex-wrap:wrap;">
       <span style="font-size:12px; color:#888; white-space:nowrap;">年齢:</span>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
-        <input type="checkbox" class="filter-age-cb" value="０歳"> 0歳
-      </label>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
-        <input type="checkbox" class="filter-age-cb" value="１歳"> 1歳
-      </label>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
-        <input type="checkbox" class="filter-age-cb" value="２歳"> 2歳
-      </label>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
-        <input type="checkbox" class="filter-age-cb" value="３歳"> 3歳
-      </label>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
-        <input type="checkbox" class="filter-age-cb" value="４歳"> 4歳
-      </label>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;">
-        <input type="checkbox" class="filter-age-cb" value="５歳"> 5歳
-      </label>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="０歳"> 0歳</label>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="１歳"> 1歳</label>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="２歳"> 2歳</label>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="３歳"> 3歳</label>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="４歳"> 4歳</label>
+      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="５歳"> 5歳</label>
     </div>
 
     <!-- 検索 -->

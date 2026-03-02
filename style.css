@@ -650,32 +650,118 @@ html, body {
 
 #error-msg.show { display: block; }
 
+/* フィルタートグルボタン（スマホ専用） */
+#filter-toggle-btn {
+  display: none;  /* PC時は非表示 */
+}
+
 /* ========================================
    モバイル対応（max-width: 768px）
    ======================================== */
 @media (max-width: 768px) {
+  :root { --header-h: 56px; }
+
+  /* ヘッダー */
   #header {
     height: 56px;
     gap: 8px;
     padding: 0 12px;
+    justify-content: space-between;
   }
-
-  :root { --header-h: 56px; }
 
   #header-logo {
-    font-size: 16px;
+    font-size: 15px;
+    flex-shrink: 0;
   }
 
-  #search-input { width: 120px; }
+  /* フィルタートグルボタン（スマホ表示） */
+  #filter-toggle-btn {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: var(--radius-btn);
+    border: 2px solid var(--color-primary);
+    background: var(--color-white);
+    color: var(--color-primary);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
 
-  #year-bar {
-    height: 44px;
+  /* フィルターバー：スマホでは非表示→タップで展開 */
+  #filter-bar {
+    display: none;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    background: var(--color-white);
+    flex-direction: column;
     gap: 10px;
+    padding: 12px 16px;
+    z-index: 998;
+    border-bottom: 2px solid var(--color-border);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    max-height: 70vh;
+    overflow-y: auto;
   }
 
-  #year-slider { width: 140px; }
+  #filter-bar.open {
+    display: flex;
+  }
 
-  .year-step-btn { font-size: 11px; padding: 0 8px; height: 26px; }
+  /* フィルター内の各グループ */
+  #filter-bar .filter-type-group,
+  #filter-bar .filter-status-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #filter-bar .filter-btn,
+  #filter-bar .filter-select {
+    height: 40px;
+    font-size: 14px;
+  }
+
+  #filter-bar #age-filter {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  #filter-bar #age-filter label {
+    font-size: 14px !important;
+  }
+
+  #filter-bar #search-input {
+    width: 100%;
+    height: 40px;
+  }
+
+  /* 年度バー：スライダーを非表示にしてボタンのみ */
+  #year-bar {
+    height: 48px;
+    gap: 6px;
+    padding: 0 10px;
+    justify-content: center;
+  }
+
+  #year-bar > span:first-child { display: none; }  /* 「年度:」ラベル非表示 */
+  #year-slider { display: none; }                  /* スライダー非表示 */
+  #year-label  { display: none; }                  /* ラベル非表示 */
+
+  .year-steps { gap: 6px; }
+
+  .year-step-btn {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
 
   /* 地図フルスクリーン */
   #app {
@@ -686,10 +772,20 @@ html, body {
     flex: 1;
   }
 
+  /* 統計バッジをコンパクトに */
+  #map-stats {
+    gap: 4px;
+  }
+
+  .stat-badge {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
   /* サイドパネル → 下部ドロワー */
   #sidebar {
     width: 100%;
-    height: 50vh;
+    height: 55vh;
     border-left: none;
     border-top: 2px solid var(--color-border);
     border-radius: var(--radius-card) var(--radius-card) 0 0;
@@ -698,8 +794,9 @@ html, body {
     left: 0;
     right: 0;
     z-index: 600;
-    transform: translateY(calc(100% - 52px));
+    transform: translateY(calc(100% - 56px));
     transition: transform 0.3s ease;
+    box-shadow: 0 -4px 20px rgba(255,143,163,0.15);
   }
 
   #sidebar.open {
@@ -709,9 +806,11 @@ html, body {
   /* ドロワーのハンドル */
   #drawer-handle {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 8px 0 4px;
+    gap: 4px;
+    padding: 8px 0 6px;
     background: var(--color-white);
     border-radius: var(--radius-card) var(--radius-card) 0 0;
     cursor: pointer;
@@ -724,10 +823,34 @@ html, body {
     background: var(--color-border);
     border-radius: 2px;
   }
+
+  /* ドロワーハンドルに「リスト・ランキング」ヒントテキスト */
+  #drawer-handle::after {
+    content: "施設リスト・ランキング ▲";
+    font-size: 11px;
+    color: var(--color-text-light);
+    font-weight: 700;
+  }
+
+  #sidebar.open #drawer-handle::after {
+    content: "閉じる ▼";
+  }
+
+  /* タブボタンをコンパクトに */
+  .tab-btn {
+    font-size: 11px;
+    height: 40px;
+  }
+
+  /* ポップアップ */
+  .leaflet-popup-content-wrapper {
+    max-width: 90vw !important;
+  }
 }
 
 @media (min-width: 769px) {
   #drawer-handle { display: none; }
+  #filter-toggle-btn { display: none; }
 }
 
 /* ========================================
