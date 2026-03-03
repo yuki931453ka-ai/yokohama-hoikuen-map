@@ -54,6 +54,8 @@ REVIEW_DOMAINS = {
     "chibi-navi.com", "hokatsu-navi.com", "hoikuen-ranking.com",
     "google.com", "google.co.jp", "yahoo.co.jp", "wikipedia.org",
     "twitter.com", "x.com", "facebook.com", "instagram.com", "youtube.com",
+    # LINEシェアリンク・短縮URL・フォームサービス（公式HPではない）
+    "line.me", "lin.ee", "forms.gle", "bit.ly", "t.co",
 }
 
 
@@ -200,21 +202,26 @@ def scrape_hoicil_yokohama():
 
 
 def fetch_hoicil_official_hp(hoicil_url: str):
-    """ホイシルの施設個別ページから公式HPを取得"""
+    """ホイシルの施設個別ページから公式HPを取得
+
+    ホイシルのページ構造:
+    - 公式HPは facilityDetailFacilitySummary_content クラス内にリンクとして掲載
+    - その他の外部リンク（LINE・フォーム等）はページ全体に散在しているため除外
+    """
     soup = fetch(hoicil_url)
     if not soup:
         return None
 
-    # 外部リンクを探す（hoicil.com以外のhttp/httpsリンク）
-    for a in soup.find_all("a", href=True):
-        href = a.get("href", "")
-        if not href.startswith("http"):
-            continue
-        domain = urllib.parse.urlparse(href).netloc
-        if domain and "hoicil.com" not in domain and not any(d in domain for d in REVIEW_DOMAINS):
-            # Google Forms や codmon のリンクを除外
-            if "docs.google.com" not in href and "codmon" not in href:
-                return href
+    # 施設概要エリア（facilityDetailFacilitySummary_content）内のリンクを優先探索
+    for div in soup.find_all(class_="facilityDetailFacilitySummary_content"):
+        for a in div.find_all("a", href=True):
+            href = a.get("href", "")
+            if not href.startswith("http"):
+                continue
+            domain = urllib.parse.urlparse(href).netloc
+            if domain and "hoicil.com" not in domain and not any(d in domain for d in REVIEW_DOMAINS):
+                if "docs.google.com" not in href and "codmon" not in href:
+                    return href
 
     return None
 
