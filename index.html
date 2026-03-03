@@ -79,13 +79,13 @@
 </header>
 
 <!-- ========================================
-     年度スライダー
+     月次スライダー
      ======================================== -->
 <div id="year-bar">
-  <span style="font-size:12px; color:#888; white-space:nowrap;">年度:</span>
-  <div class="year-steps" id="year-steps"></div>
-  <input type="range" id="year-slider" min="0" max="3" value="3" step="1">
-  <span id="year-label" style="font-weight:700; color:var(--color-primary); font-size:15px; min-width:72px; text-align:center;">令和8年</span>
+  <button id="month-prev" class="month-arrow" aria-label="前の月">◀</button>
+  <input type="range" id="month-slider" min="0" max="10" value="10" step="1">
+  <button id="month-next" class="month-arrow" aria-label="次の月" disabled>▶</button>
+  <span id="month-label">令和8年2月</span>
 </div>
 
 <!-- ========================================
