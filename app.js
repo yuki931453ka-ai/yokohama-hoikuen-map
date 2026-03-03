@@ -422,9 +422,19 @@ function createPopupContent(f, totals) {
         </tr>
       </tbody>
     </table>
-    ${f.ward && WARD_OFFICIAL_URLS[f.ward]
-      ? `<a class="popup-link" href="${WARD_OFFICIAL_URLS[f.ward]}" target="_blank" rel="noopener">🏛️ ${escHtml(f.ward)}の公式保育所案内 ↗</a>`
-      : ""}
+    <div class="popup-links">
+      ${f.official_url
+        ? `<a class="popup-link popup-link-hp" href="${escHtml(f.official_url)}" target="_blank" rel="noopener">🏠 公式HP ↗</a>`
+        : `<a class="popup-link popup-link-hp popup-link-search" href="https://www.google.com/search?q=${encodeURIComponent(f.name + ' 横浜市 公式サイト')}" target="_blank" rel="noopener">🔍 公式HP検索 ↗</a>`}
+      ${f.review_url && f.review_site === "minkou"
+        ? `<a class="popup-link popup-link-review" href="${escHtml(f.review_url)}" target="_blank" rel="noopener">💬 みんなの口コミ ↗</a>`
+        : f.review_url && f.review_site === "hoicil"
+        ? `<a class="popup-link popup-link-review" href="${escHtml(f.review_url)}" target="_blank" rel="noopener">💬 ホイシルで見る ↗</a>`
+        : ""}
+      ${f.ward && WARD_OFFICIAL_URLS[f.ward]
+        ? `<a class="popup-link popup-link-ward" href="${WARD_OFFICIAL_URLS[f.ward]}" target="_blank" rel="noopener">🏛️ ${escHtml(f.ward)}の保育所案内 ↗</a>`
+        : ""}
+    </div>
   `;
   return el;
 }
@@ -467,6 +477,14 @@ function renderFacilityList(container) {
     card.dataset.id = f.id;
     const tempBadge = f.temp_childcare === "あり"
       ? '<span class="badge badge-temp-ok">🧒 一時保育</span>' : "";
+    const reviewLink = f.review_url && f.review_site === "minkou"
+      ? `<a class="card-link card-link-review" href="${escHtml(f.review_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 みんなの口コミ</a>`
+      : f.review_url && f.review_site === "hoicil"
+      ? `<a class="card-link card-link-review" href="${escHtml(f.review_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 ホイシル</a>`
+      : "";
+    const hpLink = f.official_url
+      ? `<a class="card-link card-link-hp" href="${escHtml(f.official_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🏠 公式HP</a>`
+      : "";
     card.innerHTML = `
       <div class="card-header">
         <div class="card-status-dot" style="background:${dotColor}"></div>
@@ -477,7 +495,8 @@ function renderFacilityList(container) {
         <div class="card-num"><span class="card-num-label">入所中</span><span class="card-num-val val-enrolled">${enrolled}</span></div>
         <div class="card-num"><span class="card-num-label">空き</span><span class="card-num-val val-ok">${vacancy}</span></div>
         <div class="card-num"><span class="card-num-label">待ち</span><span class="card-num-val val-waiting">${waiting}</span></div>
-      </div>`;
+      </div>
+      ${(reviewLink || hpLink) ? `<div class="card-links">${hpLink}${reviewLink}</div>` : ""}`;
     card.addEventListener("click", () => focusFacility(f));
     frag.appendChild(card);
   });
