@@ -66,11 +66,12 @@ const state = {
   monthData:  {},       // { "r7_04": {facilities:{...}}, ... }
   monthIdx:   DEFAULT_MONTH_IDX,
 
-  filterType:   "all",
-  filterWard:   "all",
-  filterStatus: "all",
-  filterAges:   [],
-  searchQuery:  "",
+  filterType:          "all",
+  filterWard:          "all",
+  filterStatus:        "all",
+  filterAges:          [],
+  filterTempChildcare: false,  // true = 一時保育ありのみ表示
+  searchQuery:         "",
 
   activeTab:  "list",
   sortKey:    "name",
@@ -173,6 +174,16 @@ function initUI() {
     state.searchQuery = e.target.value.trim();
     applyFilters();
   });
+
+  // 一時保育フィルター
+  const tempBtn = document.getElementById("filter-temp-btn");
+  if (tempBtn) {
+    tempBtn.addEventListener("click", () => {
+      state.filterTempChildcare = !state.filterTempChildcare;
+      tempBtn.classList.toggle("active", state.filterTempChildcare);
+      applyFilters();
+    });
+  }
 
   // 月次スライダー
   const slider = document.getElementById("month-slider");
@@ -331,6 +342,8 @@ function applyFilters() {
       if (state.filterStatus === "ok"      && status !== "ok")      return false;
       if (state.filterStatus === "waiting" && status !== "waiting") return false;
     }
+    if (state.filterTempChildcare && f.temp_childcare !== "あり") return false;
+
     if (state.searchQuery) {
       const q = state.searchQuery.toLowerCase();
       if (!f.name.toLowerCase().includes(q) && !(f.address || "").toLowerCase().includes(q)) return false;
@@ -390,6 +403,11 @@ function createPopupContent(f, totals) {
   el.innerHTML = `
     <div class="popup-name">${escHtml(f.name)}</div>
     <div class="popup-ward">${escHtml(f.ward)} ・ ${escHtml(f.type || "")} <span style="font-size:11px;color:#aaa;">（${monthLabel}）</span></div>
+    <div class="popup-badges">
+      ${f.temp_childcare === "あり"  ? '<span class="badge badge-temp-ok">🧒 一時保育あり</span>' : ""}
+      ${f.temp_childcare === "なし"  ? '<span class="badge badge-temp-no">一時保育なし</span>'    : ""}
+      ${(!f.temp_childcare)          ? '<span class="badge badge-temp-unknown">一時保育不明</span>': ""}
+    </div>
     ${f.address ? `<div class="popup-address">📍 ${escHtml(f.address)}</div>` : ""}
     ${f.tel     ? `<div class="popup-tel">📞 ${escHtml(f.tel)}</div>` : ""}
     <table class="popup-table">
@@ -447,10 +465,12 @@ function renderFacilityList(container) {
     const card = document.createElement("div");
     card.className = "facility-card" + (f.id === state.selectedId ? " active" : "");
     card.dataset.id = f.id;
+    const tempBadge = f.temp_childcare === "あり"
+      ? '<span class="badge badge-temp-ok">🧒 一時保育</span>' : "";
     card.innerHTML = `
       <div class="card-header">
         <div class="card-status-dot" style="background:${dotColor}"></div>
-        <div class="card-name">${escHtml(f.name)}</div>
+        <div class="card-name">${escHtml(f.name)}${tempBadge}</div>
         <div class="card-ward">${escHtml(f.ward)}</div>
       </div>
       <div class="card-numbers">

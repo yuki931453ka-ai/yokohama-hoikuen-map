@@ -871,6 +871,43 @@ html, body {
 .marker-waiting { background: var(--color-waiting); }
 
 /* ========================================
+   一時保育バッジ
+   ======================================== */
+.popup-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-temp-ok {
+  background: #e8f9f1;
+  color: #2a9a62;
+  border: 1px solid #a8e6c8;
+}
+
+.badge-temp-no {
+  background: #f5f5f5;
+  color: #999;
+  border: 1px solid #e0e0e0;
+}
+
+.badge-temp-unknown {
+  background: #fff8ee;
+  color: #b07a20;
+  border: 1px solid #ffd98a;
+}
+
+/* ========================================
    ユーティリティ
    ======================================== */
 .hidden { display: none !important; }
