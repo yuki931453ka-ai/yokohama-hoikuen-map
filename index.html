@@ -76,6 +76,10 @@
     <!-- 一時保育フィルター -->
     <button class="filter-btn" id="filter-temp-btn">🧒 一時保育あり</button>
 
+    <!-- 自宅設定 -->
+    <button class="filter-btn" id="home-set-btn">🏠 自宅設定</button>
+    <button class="filter-btn" id="filter-radius-btn" style="display:none;">📍 5km圏内</button>
+
     <!-- 検索 -->
     <input type="text" id="search-input" placeholder="🔍 施設名・住所で検索">
   </div>
@@ -156,6 +160,7 @@
         <option value="ward">区順</option>
         <option value="ok">空き数が多い順</option>
         <option value="wait">待ち数が多い順</option>
+        <option value="dist">自宅から近い順</option>
       </select>
     </div>
 
@@ -168,6 +173,28 @@
     </div>
   </aside>
 
+</div>
+
+<!-- ========================================
+     自宅設定モーダル
+     ======================================== -->
+<div id="home-modal">
+  <div class="home-modal-content">
+    <button id="home-modal-close" class="home-modal-close">&times;</button>
+    <h3>🏠 自宅を設定</h3>
+    <p id="home-current-info" class="home-current-info">自宅が未設定です</p>
+    <div class="home-modal-actions">
+      <button id="home-use-gps" class="home-action-btn home-action-gps">📍 現在地を使う</button>
+      <button id="home-use-map" class="home-action-btn home-action-map">🗺️ 地図上で選ぶ</button>
+    </div>
+    <button id="home-clear" class="home-clear-btn">設定をクリア</button>
+  </div>
+</div>
+
+<!-- 地図ピック中のバナー -->
+<div id="map-pick-banner">
+  <span>地図をタップして自宅の位置を選んでください</span>
+  <button id="map-pick-cancel">キャンセル</button>
 </div>
 
 <!-- ========================================

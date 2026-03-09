@@ -58,6 +58,14 @@ const WARD_OFFICIAL_URLS = {
   "瀬谷区":    "https://www.city.yokohama.lg.jp/seya/",
 };
 
+// 移動速度（km/h）※子ども同乗の送迎を想定
+const TRAVEL_SPEEDS = {
+  walk:    3.5,   // 徒歩（子ども連れ・ベビーカー）
+  bicycle: 10.0,  // 自転車（チャイルドシート付き）
+  car:     30.0,  // 車（市街地）
+};
+const HOME_RADIUS_KM = 5;  // 自宅からの検索半径
+
 // ========================================
 // アプリ状態
 // ========================================
@@ -72,12 +80,15 @@ const state = {
   filterAges:          [],
   filterTempChildcare: false,  // true = 一時保育ありのみ表示
   searchQuery:         "",
+  filterHomeRadius:    false,  // true = 自宅5km圏内のみ表示
 
   activeTab:  "list",
   sortKey:    "name",
 
   visibleFacilities: [],
   selectedId:        null,
+
+  homeLocation: null,  // { lat, lng, address }
 };
 
 // ========================================
@@ -85,10 +96,13 @@ const state = {
 // ========================================
 let map, markerLayer;
 let markerMap = {};
+let homeMarker = null;
+let homeCircle = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   initMap();
   initUI();
+  initHome();
   await loadData();
   updateMonth(state.monthIdx);
 });
@@ -348,6 +362,13 @@ function applyFilters() {
       const q = state.searchQuery.toLowerCase();
       if (!f.name.toLowerCase().includes(q) && !(f.address || "").toLowerCase().includes(q)) return false;
     }
+
+    // 自宅5km圏内フィルター
+    if (state.filterHomeRadius && state.homeLocation) {
+      const dist = calcDistanceKm(state.homeLocation.lat, state.homeLocation.lng, f.lat, f.lng);
+      if (dist > HOME_RADIUS_KM) return false;
+    }
+
     return true;
   });
   renderMap();
@@ -410,6 +431,18 @@ function createPopupContent(f, totals) {
     </div>
     ${f.address ? `<div class="popup-address">📍 ${escHtml(f.address)}</div>` : ""}
     ${f.tel     ? `<div class="popup-tel">📞 ${escHtml(f.tel)}</div>` : ""}
+    ${(() => {
+      const di = getDistanceInfo(f);
+      if (!di) return "";
+      return `<div class="popup-distance">
+        <span class="popup-dist-val">📐 自宅から ${formatDistance(di.distance)}</span>
+        <div class="popup-travel-times">
+          <span>🚶 徒歩 ${formatTravelTime(di.walk)}</span>
+          <span>🚲 自転車 ${formatTravelTime(di.bicycle)}</span>
+          <span>🚗 車 ${formatTravelTime(di.car)}</span>
+        </div>
+      </div>`;
+    })()}
     <table class="popup-table">
       <thead><tr><th>年齢</th><th class="enrolled">入所中</th><th class="vacancy">空き</th><th class="waiting">待ち</th></tr></thead>
       <tbody>
@@ -451,12 +484,17 @@ function renderSidebar() {
 
 function getSortedFacilities() {
   return [...state.visibleFacilities]
-    .map(f => ({ ...f, _totals: calcTotals(f, state.filterAges), _status: getStatus(calcTotals(f, state.filterAges)) }))
+    .map(f => {
+      const _totals = calcTotals(f, state.filterAges);
+      const _distInfo = getDistanceInfo(f);
+      return { ...f, _totals, _status: getStatus(_totals), _distInfo };
+    })
     .sort((a, b) => {
       switch (state.sortKey) {
         case "ward": { const c = (a.ward||"").localeCompare(b.ward||"","ja"); return c||((a.name||"").localeCompare(b.name||"","ja")); }
         case "ok":   return b._totals.vacancy - a._totals.vacancy;
         case "wait": return b._totals.waiting - a._totals.waiting;
+        case "dist": return (a._distInfo?.distance ?? 999) - (b._distInfo?.distance ?? 999);
         default:     return (a.name||"").localeCompare(b.name||"","ja");
       }
     });
@@ -485,12 +523,22 @@ function renderFacilityList(container) {
     const hpLink = f.official_url
       ? `<a class="card-link card-link-hp" href="${escHtml(f.official_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🏠 公式HP</a>`
       : "";
+    // 距離・所要時間
+    const di = f._distInfo;
+    const distHtml = di ? `
+      <div class="card-distance">
+        <span class="card-dist-val">${formatDistance(di.distance)}</span>
+        <span class="card-travel">🚶${formatTravelTime(di.walk)}</span>
+        <span class="card-travel">🚲${formatTravelTime(di.bicycle)}</span>
+        <span class="card-travel">🚗${formatTravelTime(di.car)}</span>
+      </div>` : "";
     card.innerHTML = `
       <div class="card-header">
         <div class="card-status-dot" style="background:${dotColor}"></div>
         <div class="card-name">${escHtml(f.name)}${tempBadge}</div>
         <div class="card-ward">${escHtml(f.ward)}</div>
       </div>
+      ${distHtml}
       <div class="card-numbers">
         <div class="card-num"><span class="card-num-label">入所中</span><span class="card-num-val val-enrolled">${enrolled}</span></div>
         <div class="card-num"><span class="card-num-label">空き</span><span class="card-num-val val-ok">${vacancy}</span></div>
@@ -557,6 +605,233 @@ function updateMonth(idx) {
 function updateSliderGradient(slider, idx) {
   const pct = MONTHS.length > 1 ? (idx / (MONTHS.length - 1)) * 100 : 100;
   slider.style.background = `linear-gradient(to right, var(--color-primary) ${pct}%, var(--color-border) ${pct}%)`;
+}
+
+// ========================================
+// 自宅設定
+// ========================================
+function initHome() {
+  // localStorageから復元
+  const saved = localStorage.getItem("hoikuen_home");
+  if (saved) {
+    try {
+      state.homeLocation = JSON.parse(saved);
+      state.filterHomeRadius = true;
+    } catch (e) { /* ignore */ }
+  }
+
+  // 自宅設定ボタン
+  const homeBtn = document.getElementById("home-set-btn");
+  if (homeBtn) {
+    homeBtn.addEventListener("click", () => openHomeModal());
+    updateHomeBtnLabel();
+  }
+
+  // 5km圏内フィルターボタン
+  const radiusBtn = document.getElementById("filter-radius-btn");
+  if (radiusBtn) {
+    radiusBtn.addEventListener("click", () => {
+      if (!state.homeLocation) { openHomeModal(); return; }
+      state.filterHomeRadius = !state.filterHomeRadius;
+      radiusBtn.classList.toggle("active", state.filterHomeRadius);
+      applyFilters();
+    });
+    radiusBtn.classList.toggle("active", state.filterHomeRadius);
+    radiusBtn.style.display = state.homeLocation ? "" : "none";
+  }
+
+  // モーダル
+  const modal = document.getElementById("home-modal");
+  if (!modal) return;
+
+  document.getElementById("home-modal-close").addEventListener("click", closeHomeModal);
+  modal.addEventListener("click", e => { if (e.target === modal) closeHomeModal(); });
+
+  document.getElementById("home-use-gps").addEventListener("click", useGPS);
+  document.getElementById("home-use-map").addEventListener("click", startMapPick);
+  document.getElementById("home-clear").addEventListener("click", clearHome);
+
+  // 地図復元
+  if (state.homeLocation) {
+    renderHomeOnMap();
+  }
+}
+
+function openHomeModal() {
+  document.getElementById("home-modal").classList.add("open");
+  const info = document.getElementById("home-current-info");
+  if (state.homeLocation) {
+    info.textContent = `現在の設定: ${state.homeLocation.address || `${state.homeLocation.lat.toFixed(4)}, ${state.homeLocation.lng.toFixed(4)}`}`;
+  } else {
+    info.textContent = "自宅が未設定です";
+  }
+}
+
+function closeHomeModal() {
+  document.getElementById("home-modal").classList.remove("open");
+}
+
+function useGPS() {
+  closeHomeModal();
+  if (!navigator.geolocation) { showError("このブラウザでは位置情報を使用できません"); return; }
+  showLoading("現在地を取得中...");
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      hideLoading();
+      setHome(pos.coords.latitude, pos.coords.longitude);
+    },
+    err => {
+      hideLoading();
+      showError("位置情報の取得に失敗しました。設定から許可してください。");
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+let mapPickMode = false;
+
+function startMapPick() {
+  closeHomeModal();
+  mapPickMode = true;
+  document.getElementById("map-pick-banner").classList.add("show");
+  map.getContainer().style.cursor = "crosshair";
+  map.once("click", onMapPick);
+
+  // キャンセル
+  document.getElementById("map-pick-cancel").addEventListener("click", cancelMapPick, { once: true });
+}
+
+function onMapPick(e) {
+  mapPickMode = false;
+  document.getElementById("map-pick-banner").classList.remove("show");
+  map.getContainer().style.cursor = "";
+  setHome(e.latlng.lat, e.latlng.lng);
+}
+
+function cancelMapPick() {
+  mapPickMode = false;
+  document.getElementById("map-pick-banner").classList.remove("show");
+  map.getContainer().style.cursor = "";
+  map.off("click", onMapPick);
+}
+
+async function setHome(lat, lng) {
+  // 逆ジオコーディングで住所取得
+  let address = "";
+  try {
+    const res = await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat}&lon=${lng}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.results) {
+        address = (data.results.lv01Nm || "") + (data.results.muniNm || "");
+      }
+    }
+  } catch (e) { /* ignore */ }
+
+  state.homeLocation = { lat, lng, address };
+  state.filterHomeRadius = true;
+  localStorage.setItem("hoikuen_home", JSON.stringify(state.homeLocation));
+
+  updateHomeBtnLabel();
+  renderHomeOnMap();
+
+  // 5km圏内ボタン表示
+  const radiusBtn = document.getElementById("filter-radius-btn");
+  if (radiusBtn) {
+    radiusBtn.style.display = "";
+    radiusBtn.classList.add("active");
+  }
+
+  applyFilters();
+  map.setView([lat, lng], 14, { animate: true });
+}
+
+function clearHome() {
+  closeHomeModal();
+  state.homeLocation = null;
+  state.filterHomeRadius = false;
+  localStorage.removeItem("hoikuen_home");
+
+  if (homeMarker) { map.removeLayer(homeMarker); homeMarker = null; }
+  if (homeCircle) { map.removeLayer(homeCircle); homeCircle = null; }
+
+  updateHomeBtnLabel();
+  const radiusBtn = document.getElementById("filter-radius-btn");
+  if (radiusBtn) { radiusBtn.style.display = "none"; radiusBtn.classList.remove("active"); }
+
+  applyFilters();
+}
+
+function updateHomeBtnLabel() {
+  const btn = document.getElementById("home-set-btn");
+  if (!btn) return;
+  btn.textContent = state.homeLocation ? "🏠 自宅変更" : "🏠 自宅設定";
+  btn.classList.toggle("active", !!state.homeLocation);
+}
+
+function renderHomeOnMap() {
+  if (!state.homeLocation) return;
+  const { lat, lng } = state.homeLocation;
+
+  if (homeMarker) map.removeLayer(homeMarker);
+  if (homeCircle) map.removeLayer(homeCircle);
+
+  homeMarker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      html: '<div class="home-marker">🏠</div>',
+      className: "",
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+    }),
+    zIndexOffset: 1000,
+  }).addTo(map).bindPopup(`<b>🏠 自宅</b><br>${state.homeLocation.address || ""}`);
+
+  homeCircle = L.circle([lat, lng], {
+    radius: HOME_RADIUS_KM * 1000,
+    color: "#FF8FA3",
+    fillColor: "#FF8FA3",
+    fillOpacity: 0.06,
+    weight: 2,
+    dashArray: "8 4",
+  }).addTo(map);
+}
+
+// 2点間の距離（km）: Haversine
+function calcDistanceKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// 距離から所要時間（分）を計算
+function calcTravelTimes(distKm) {
+  return {
+    walk:    Math.round(distKm / TRAVEL_SPEEDS.walk * 60),
+    bicycle: Math.round(distKm / TRAVEL_SPEEDS.bicycle * 60),
+    car:     Math.round(distKm / TRAVEL_SPEEDS.car * 60),
+  };
+}
+
+// 距離表示用フォーマット
+function formatDistance(distKm) {
+  if (distKm < 1) return `${Math.round(distKm * 1000)}m`;
+  return `${distKm.toFixed(1)}km`;
+}
+
+function formatTravelTime(minutes) {
+  if (minutes < 1) return "1分未満";
+  if (minutes >= 60) return `${Math.floor(minutes/60)}時間${minutes%60 ? minutes%60+"分" : ""}`;
+  return `${minutes}分`;
+}
+
+// 施設の距離情報を取得
+function getDistanceInfo(f) {
+  if (!state.homeLocation || !f.lat || !f.lng) return null;
+  const dist = calcDistanceKm(state.homeLocation.lat, state.homeLocation.lng, f.lat, f.lng);
+  const times = calcTravelTimes(dist);
+  return { distance: dist, ...times };
 }
 
 // ========================================
