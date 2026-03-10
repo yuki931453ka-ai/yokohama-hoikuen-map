@@ -66,6 +66,16 @@ const TRAVEL_SPEEDS = {
 };
 const HOME_RADIUS_KM = 5;  // 自宅からの検索半径
 
+// OSRM API 設定
+const OSRM_BASE = "https://router.project-osrm.org/route/v1";
+const OSRM_PROFILES = {
+  walk:    "foot",
+  bicycle: "bike",
+  car:     "driving",
+};
+const routeCache = {};  // キー: "lat,lng>lat,lng" → { walk, bicycle, car }
+let activeRouteLayer = null;  // 地図上のルート表示用
+
 // ========================================
 // アプリ状態
 // ========================================
@@ -120,6 +130,20 @@ function initMap() {
     iconCreateFunction: createClusterIcon,
   });
   map.addLayer(markerLayer);
+
+  // ポップアップが開いた時にOSRMルート検索を開始（map レベルで捕捉）
+  map.on("popupopen", (e) => {
+    if (!state.homeLocation) return;
+    const popup = e.popup;
+    const marker = popup._source;
+    const facility = marker?._facilityData;
+    if (!facility) return;
+    const popupEl = popup.getElement();
+    if (popupEl) {
+      console.log("[OSRM] popupopen fired for:", facility.name);
+      updatePopupWithRoute(facility, popupEl);
+    }
+  });
 }
 
 function createClusterIcon(cluster) {
@@ -397,8 +421,13 @@ function renderMap() {
     });
 
     const marker = L.marker([f.lat, f.lng], { icon });
+    marker._facilityData = f;  // ルート検索用にデータを保持
     marker.bindPopup(() => createPopupContent(f, totals), { maxWidth: 320 });
-    marker.on("click", () => { state.selectedId = f.id; highlightCard(f.id); });
+    marker.on("click", () => {
+      clearRouteFromMap();
+      state.selectedId = f.id;
+      highlightCard(f.id);
+    });
     markerLayer.addLayer(marker);
     markerMap[f.id] = marker;
   });
@@ -435,13 +464,14 @@ function createPopupContent(f, totals) {
       const di = getDistanceInfo(f);
       if (!di) return "";
       return `<div class="popup-distance">
-        <span class="popup-dist-val">📐 自宅から ${formatDistance(di.distance)}</span>
+        <span class="popup-dist-val">📐 直線距離 ${formatDistance(di.distance)}</span>
         <div class="popup-travel-times">
-          <span>🚶 徒歩 ${formatTravelTime(di.walk)}</span>
-          <span>🚲 自転車 ${formatTravelTime(di.bicycle)}</span>
-          <span>🚗 車 ${formatTravelTime(di.car)}</span>
+          <span>🚶 ≈${formatTravelTime(di.walk)}</span>
+          <span>🚲 ≈${formatTravelTime(di.bicycle)}</span>
+          <span>🚗 ≈${formatTravelTime(di.car)}</span>
         </div>
-      </div>`;
+      </div>
+      <div class="popup-route-section"></div>`;
     })()}
     <table class="popup-table">
       <thead><tr><th>年齢</th><th class="enrolled">入所中</th><th class="vacancy">空き</th><th class="waiting">待ち</th></tr></thead>
@@ -832,6 +862,118 @@ function getDistanceInfo(f) {
   const dist = calcDistanceKm(state.homeLocation.lat, state.homeLocation.lng, f.lat, f.lng);
   const times = calcTravelTimes(dist);
   return { distance: dist, ...times };
+}
+
+// ========================================
+// OSRM ルート検索
+// ========================================
+function getRouteCacheKey(homeLat, homeLng, facLat, facLng) {
+  return `${homeLat.toFixed(5)},${homeLng.toFixed(5)}>${facLat.toFixed(5)},${facLng.toFixed(5)}`;
+}
+
+async function fetchOSRMRoute(profile, homeLng, homeLat, facLng, facLat) {
+  const url = `${OSRM_BASE}/${profile}/${homeLng},${homeLat};${facLng},${facLat}?overview=full&geometries=geojson`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.code !== "Ok" || !data.routes?.length) return null;
+    const route = data.routes[0];
+    return {
+      distance: route.distance / 1000,  // m → km
+      duration: Math.round(route.duration / 60),  // sec → min
+      geometry: route.geometry,
+    };
+  } catch (e) {
+    console.warn(`OSRM (${profile}) fetch failed:`, e);
+    return null;
+  }
+}
+
+async function fetchAllRoutes(facility) {
+  if (!state.homeLocation || !facility.lat || !facility.lng) return null;
+  const { lat: hLat, lng: hLng } = state.homeLocation;
+  const cacheKey = getRouteCacheKey(hLat, hLng, facility.lat, facility.lng);
+
+  if (routeCache[cacheKey]) return routeCache[cacheKey];
+
+  // 3プロファイルを並列リクエスト
+  const [walkRes, bikeRes, carRes] = await Promise.all([
+    fetchOSRMRoute(OSRM_PROFILES.walk, hLng, hLat, facility.lng, facility.lat),
+    fetchOSRMRoute(OSRM_PROFILES.bicycle, hLng, hLat, facility.lng, facility.lat),
+    fetchOSRMRoute(OSRM_PROFILES.car, hLng, hLat, facility.lng, facility.lat),
+  ]);
+
+  const result = { walk: walkRes, bicycle: bikeRes, car: carRes };
+  routeCache[cacheKey] = result;
+  return result;
+}
+
+function showRouteOnMap(geometry) {
+  clearRouteFromMap();
+  if (!geometry) return;
+  activeRouteLayer = L.geoJSON(geometry, {
+    style: { color: "#3a7bd5", weight: 4, opacity: 0.7, dashArray: "8 4" },
+  }).addTo(map);
+}
+
+function clearRouteFromMap() {
+  if (activeRouteLayer) {
+    map.removeLayer(activeRouteLayer);
+    activeRouteLayer = null;
+  }
+}
+
+// ポップアップ内のルート情報を非同期更新
+async function updatePopupWithRoute(facility, popupEl) {
+  const routeSection = popupEl.querySelector(".popup-route-section");
+  if (!routeSection) return;
+
+  routeSection.innerHTML = `
+    <div class="popup-route-loading">🔄 ルート検索中...</div>
+  `;
+
+  const routes = await fetchAllRoutes(facility);
+  if (!routes) {
+    routeSection.innerHTML = `<div class="popup-route-error">ルート取得に失敗しました</div>`;
+    return;
+  }
+
+  // 直線距離（参考値）
+  const straightDist = calcDistanceKm(state.homeLocation.lat, state.homeLocation.lng, facility.lat, facility.lng);
+
+  // 各ルートの表示
+  const makeRow = (emoji, label, route, fallbackSpeed) => {
+    if (route) {
+      return `<div class="popup-route-row">
+        <span class="popup-route-mode">${emoji} ${label}</span>
+        <span class="popup-route-time">${formatTravelTime(route.duration)}</span>
+        <span class="popup-route-dist">(${formatDistance(route.distance)})</span>
+      </div>`;
+    }
+    // フォールバック: 直線距離 × 1.3 で推定
+    const estDist = straightDist * 1.3;
+    const estTime = Math.round(estDist / fallbackSpeed * 60);
+    return `<div class="popup-route-row popup-route-est">
+      <span class="popup-route-mode">${emoji} ${label}</span>
+      <span class="popup-route-time">≈${formatTravelTime(estTime)}</span>
+      <span class="popup-route-dist">(≈${formatDistance(estDist)})</span>
+    </div>`;
+  };
+
+  // 車のルートを地図に表示（最も情報量が多い）
+  const displayRoute = routes.car || routes.bicycle || routes.walk;
+  if (displayRoute?.geometry) {
+    showRouteOnMap(displayRoute.geometry);
+  }
+
+  routeSection.innerHTML = `
+    <div class="popup-route-header">🗺️ ルート検索結果</div>
+    ${makeRow("🚶", "徒歩", routes.walk, TRAVEL_SPEEDS.walk)}
+    ${makeRow("🚲", "自転車", routes.bicycle, TRAVEL_SPEEDS.bicycle)}
+    ${makeRow("🚗", "車", routes.car, TRAVEL_SPEEDS.car)}
+    <div class="popup-route-note">📐 直線距離: ${formatDistance(straightDist)}</div>
+  `;
 }
 
 // ========================================
