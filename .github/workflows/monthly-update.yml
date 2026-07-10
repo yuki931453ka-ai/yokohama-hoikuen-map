@@ -1,0 +1,66 @@
+name: Monthly Data Update
+
+on:
+  schedule:
+    # 毎月5日 00:00 UTC（09:00 JST）
+    # 横浜市は毎月1日にデータ更新するため、余裕を持って5日に実行
+    - cron: '0 0 5 * *'
+  workflow_dispatch:
+    inputs:
+      year:
+        description: '西暦年（例: 2026）'
+        required: false
+      month:
+        description: '月（例: 7）'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run auto-update script
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.year }}" ]; then
+            ARGS="$ARGS --year ${{ github.event.inputs.year }}"
+          fi
+          if [ -n "${{ github.event.inputs.month }}" ]; then
+            ARGS="$ARGS --month ${{ github.event.inputs.month }}"
+          fi
+          python scripts/auto_update.py $ARGS
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          MONTH_LABEL=$(python -c "
+          from datetime import date
+          y = int('${{ github.event.inputs.year }}' or date.today().year)
+          m = int('${{ github.event.inputs.month }}' or date.today().month)
+          print(f'令和{y-2018}年{m}月')
+          ")
+          git add data/monthly/ data/months.json
+          git commit -m "chore: ${MONTH_LABEL}の保育所データを自動更新"
+          git push

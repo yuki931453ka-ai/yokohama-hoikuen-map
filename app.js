@@ -20,21 +20,9 @@ const WARDS = [
 const AGE_KEYS   = ["０歳", "１歳", "２歳", "３歳", "４歳", "５歳"];
 const AGE_LABELS = ["0歳", "1歳", "2歳", "3歳", "4歳", "5歳"];
 
-// 月次データリスト（古い順）
-const MONTHS = [
-  { key: "r7_04", label: "令和7年4月",  file: "data/monthly/r7_04.json" },
-  { key: "r7_05", label: "令和7年5月",  file: "data/monthly/r7_05.json" },
-  { key: "r7_06", label: "令和7年6月",  file: "data/monthly/r7_06.json" },
-  { key: "r7_07", label: "令和7年7月",  file: "data/monthly/r7_07.json" },
-  { key: "r7_08", label: "令和7年8月",  file: "data/monthly/r7_08.json" },
-  { key: "r7_09", label: "令和7年9月",  file: "data/monthly/r7_09.json" },
-  { key: "r7_10", label: "令和7年10月", file: "data/monthly/r7_10.json" },
-  { key: "r7_11", label: "令和7年11月", file: "data/monthly/r7_11.json" },
-  { key: "r7_12", label: "令和7年12月", file: "data/monthly/r7_12.json" },
-  { key: "r8_01", label: "令和8年1月",  file: "data/monthly/r8_01.json" },
-  { key: "r8_02", label: "令和8年2月",  file: "data/monthly/r8_02.json" },
-];
-const DEFAULT_MONTH_IDX = MONTHS.length - 1;  // 最新月（令和8年2月）
+// 月次データリスト（data/months.json から動的読み込み）
+let MONTHS = [];
+let DEFAULT_MONTH_IDX = 0;
 
 // 区ごとの横浜市公式保育所案内ページ
 const WARD_OFFICIAL_URLS = {
@@ -114,6 +102,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initUI();
   initHome();
   await loadData();
+  initMonthSlider();
   updateMonth(state.monthIdx);
 });
 
@@ -223,18 +212,11 @@ function initUI() {
     });
   }
 
-  // 月次スライダー
-  const slider = document.getElementById("month-slider");
-  slider.min   = 0;
-  slider.max   = MONTHS.length - 1;
-  slider.value = DEFAULT_MONTH_IDX;
-  updateSliderGradient(slider, DEFAULT_MONTH_IDX);
-
-  slider.addEventListener("input", () => {
-    updateMonth(parseInt(slider.value));
+  // 月次スライダー（イベントリスナーのみ。値の設定はinitMonthSlider()で行う）
+  document.getElementById("month-slider").addEventListener("input", (e) => {
+    updateMonth(parseInt(e.target.value));
   });
 
-  // ← → 矢印ボタン
   document.getElementById("month-prev").addEventListener("click", () => {
     if (state.monthIdx > 0) {
       const newIdx = state.monthIdx - 1;
@@ -297,6 +279,14 @@ function initUI() {
 async function loadData() {
   showLoading("データを読み込んでいます...");
   try {
+    // 月次リストを動的読み込み
+    const monthsRes = await fetch("data/months.json");
+    if (monthsRes.ok) {
+      MONTHS = await monthsRes.json();
+      DEFAULT_MONTH_IDX = MONTHS.length - 1;
+      state.monthIdx = DEFAULT_MONTH_IDX;
+    }
+
     const geoRes = await fetch("data/nurseries_geo.json");
     if (geoRes.ok) {
       state.geoData = await geoRes.json();
@@ -306,9 +296,11 @@ async function loadData() {
     }
 
     // 最新月だけ先読み（他は遅延読み込み）
-    const latestMonth = MONTHS[DEFAULT_MONTH_IDX];
-    const res = await fetch(latestMonth.file);
-    if (res.ok) state.monthData[latestMonth.key] = await res.json();
+    if (MONTHS.length > 0) {
+      const latestMonth = MONTHS[DEFAULT_MONTH_IDX];
+      const res = await fetch(latestMonth.file);
+      if (res.ok) state.monthData[latestMonth.key] = await res.json();
+    }
 
   } catch (e) {
     showError("データの読み込みに失敗しました。");
@@ -316,6 +308,14 @@ async function loadData() {
   } finally {
     hideLoading();
   }
+}
+
+function initMonthSlider() {
+  const slider = document.getElementById("month-slider");
+  slider.min   = 0;
+  slider.max   = MONTHS.length - 1;
+  slider.value = DEFAULT_MONTH_IDX;
+  updateSliderGradient(slider, DEFAULT_MONTH_IDX);
 }
 
 async function ensureMonthData(monthKey) {

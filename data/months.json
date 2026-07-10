@@ -1,0 +1,82 @@
+[
+  {
+    "key": "r7_04",
+    "label": "令和7年4月",
+    "file": "data/monthly/r7_04.json"
+  },
+  {
+    "key": "r7_05",
+    "label": "令和7年5月",
+    "file": "data/monthly/r7_05.json"
+  },
+  {
+    "key": "r7_06",
+    "label": "令和7年6月",
+    "file": "data/monthly/r7_06.json"
+  },
+  {
+    "key": "r7_07",
+    "label": "令和7年7月",
+    "file": "data/monthly/r7_07.json"
+  },
+  {
+    "key": "r7_08",
+    "label": "令和7年8月",
+    "file": "data/monthly/r7_08.json"
+  },
+  {
+    "key": "r7_09",
+    "label": "令和7年9月",
+    "file": "data/monthly/r7_09.json"
+  },
+  {
+    "key": "r7_10",
+    "label": "令和7年10月",
+    "file": "data/monthly/r7_10.json"
+  },
+  {
+    "key": "r7_11",
+    "label": "令和7年11月",
+    "file": "data/monthly/r7_11.json"
+  },
+  {
+    "key": "r7_12",
+    "label": "令和7年12月",
+    "file": "data/monthly/r7_12.json"
+  },
+  {
+    "key": "r8_01",
+    "label": "令和8年1月",
+    "file": "data/monthly/r8_01.json"
+  },
+  {
+    "key": "r8_02",
+    "label": "令和8年2月",
+    "file": "data/monthly/r8_02.json"
+  },
+  {
+    "key": "r8_03",
+    "label": "令和8年3月",
+    "file": "data/monthly/r8_03.json"
+  },
+  {
+    "key": "r8_04",
+    "label": "令和8年4月",
+    "file": "data/monthly/r8_04.json"
+  },
+  {
+    "key": "r8_05",
+    "label": "令和8年5月",
+    "file": "data/monthly/r8_05.json"
+  },
+  {
+    "key": "r8_06",
+    "label": "令和8年6月",
+    "file": "data/monthly/r8_06.json"
+  },
+  {
+    "key": "r8_07",
+    "label": "令和8年7月",
+    "file": "data/monthly/r8_07.json"
+  }
+]
