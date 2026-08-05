@@ -78,5 +78,10 @@
     "key": "r8_07",
     "label": "令和8年7月",
     "file": "data/monthly/r8_07.json"
+  },
+  {
+    "key": "r8_08",
+    "label": "令和8年8月",
+    "file": "data/monthly/r8_08.json"
   }
 ]
