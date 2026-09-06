@@ -430,7 +430,7 @@ function renderMap() {
 
     const marker = L.marker([f.lat, f.lng], { icon });
     marker._facilityData = f;  // ルート検索用にデータを保持
-    marker.bindPopup(() => createPopupContent(f, totals), { maxWidth: 320 });
+    marker.bindPopup(() => createPopupContent(f, totals), { maxWidth: 320, maxHeight: 400, autoPan: true, autoPanPaddingTopLeft: [10, 80], autoPanPaddingBottomRight: [10, 10] });
     marker.on("click", () => {
       clearRouteFromMap();
       state.selectedId = f.id;
