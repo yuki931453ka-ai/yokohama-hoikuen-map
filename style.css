@@ -1387,6 +1387,19 @@ html, body {
 /* ========================================
    ユーティリティ
    ======================================== */
+/* 注記フッター */
+.app-notice {
+  padding: 12px 16px;
+  background: #faf8f5;
+  border-top: 1px solid #ece6df;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #999;
+}
+.app-notice p {
+  margin: 2px 0;
+}
+
 .hidden { display: none !important; }
 
 .empty-state {
