@@ -65,6 +65,11 @@ const routeCache = {};  // キー: "lat,lng>lat,lng" → { walk, bicycle, car }
 let activeRouteLayer = null;  // 地図上のルート表示用
 
 // ========================================
+// AIサマリーデータ
+// ========================================
+let aiSummaries = null;  // { summaries: { facilityId: { comment, tags, ease, ... } } }
+
+// ========================================
 // アプリ状態
 // ========================================
 const state = {
@@ -302,6 +307,9 @@ async function loadData() {
       if (res.ok) state.monthData[latestMonth.key] = await res.json();
     }
 
+    // AIサマリーデータを読み込み（なくてもアプリは動作する）
+    await loadAISummaries();
+
   } catch (e) {
     showError("データの読み込みに失敗しました。");
     console.error(e);
@@ -458,6 +466,7 @@ function createPopupContent(f, totals) {
       ${f.temp_childcare === "なし"  ? '<span class="badge badge-temp-no">一時保育なし</span>'    : ""}
       ${(!f.temp_childcare)          ? '<span class="badge badge-temp-unknown">一時保育不明</span>': ""}
     </div>
+    ${renderAISummaryHTML(f.id)}
     ${f.address ? `<div class="popup-address">📍 ${escHtml(f.address)}</div>` : ""}
     ${f.tel     ? `<div class="popup-tel">📞 ${escHtml(f.tel)}</div>` : ""}
     ${(() => {
@@ -574,6 +583,7 @@ function renderFacilityList(container) {
         <div class="card-num"><span class="card-num-label">空き</span><span class="card-num-val val-ok">${vacancy}</span></div>
         <div class="card-num"><span class="card-num-label">待ち</span><span class="card-num-val val-waiting">${waiting}</span></div>
       </div>
+      ${renderAISummaryCardHTML(f.id)}
       ${(reviewLink || hpLink) ? `<div class="card-links">${hpLink}${reviewLink}</div>` : ""}`;
     card.addEventListener("click", () => focusFacility(f));
     frag.appendChild(card);
@@ -1019,4 +1029,86 @@ function showError(msg) {
 function escHtml(str) {
   if (!str) return "";
   return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ========================================
+// AIサマリー
+// ========================================
+async function loadAISummaries() {
+  try {
+    const res = await fetch("data/ai_summaries.json");
+    if (!res.ok) {
+      console.log(`[AI] サマリーデータ取得失敗 (HTTP ${res.status})`);
+      return;
+    }
+    const data = await res.json();
+    if (data && typeof data.summaries === "object") {
+      aiSummaries = data;
+      console.log(`[AI] サマリー読み込み完了: ${Object.keys(aiSummaries.summaries).length}件`);
+    } else {
+      console.log("[AI] サマリーデータの形式が不正です");
+    }
+  } catch (e) {
+    console.log("[AI] サマリーデータなし（正常動作に影響なし）", e);
+  }
+}
+
+function getAISummary(facilityId) {
+  if (!aiSummaries?.summaries) return null;
+  return aiSummaries.summaries[facilityId] || null;
+}
+
+function renderAISummaryHTML(facilityId) {
+  const summary = getAISummary(facilityId);
+  if (!summary) return "";
+
+  const comment = escHtml(summary.comment || "");
+  const tags = (summary.tags || []).map(t => `<span class="ai-tag">${escHtml(t)}</span>`).join("");
+  const ease = escHtml(summary.ease || "");
+
+  const ratingHtml = summary.review_rating
+    ? `<span class="ai-rating">⭐ ${escHtml(String(summary.review_rating))}</span>` : "";
+  const reviewCountHtml = summary.review_count
+    ? `<span class="ai-review-count">(${escHtml(String(summary.review_count))}件の口コミ)</span>` : "";
+
+  const easeClass = {
+    "入りやすい": "ease-easy",
+    "普通": "ease-normal",
+    "やや競争あり": "ease-competitive",
+    "競争率高め": "ease-hard",
+  }[summary.ease] || "ease-normal";
+
+  return `
+    <div class="ai-summary">
+      <div class="ai-summary-header">
+        <span class="ai-summary-label">🤖 AIまとめ</span>
+        ${ratingHtml}${reviewCountHtml}
+        <span class="ai-ease ${easeClass}">${ease}</span>
+      </div>
+      <div class="ai-summary-comment">${comment}</div>
+      ${tags ? `<div class="ai-summary-tags">${tags}</div>` : ""}
+    </div>`;
+}
+
+function renderAISummaryCardHTML(facilityId) {
+  const summary = getAISummary(facilityId);
+  if (!summary) return "";
+
+  const comment = escHtml(summary.comment || "");
+  // カードでは短縮版（60文字）
+  const shortComment = comment.length > 60 ? comment.slice(0, 60) + "…" : comment;
+  const ease = escHtml(summary.ease || "");
+  const easeClass = {
+    "入りやすい": "ease-easy",
+    "普通": "ease-normal",
+    "やや競争あり": "ease-competitive",
+    "競争率高め": "ease-hard",
+  }[summary.ease] || "ease-normal";
+
+  return `
+    <div class="ai-card-summary">
+      <span class="ai-card-label">🤖</span>
+      <span class="ai-card-comment">${shortComment}</span>
+      <span class="ai-ease-mini ${easeClass}">${ease}</span>
+    </div>`;
 }
