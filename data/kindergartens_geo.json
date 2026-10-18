@@ -4544,7 +4544,7 @@
       "accepts_3": true,
       "accepts_4": true,
       "accepts_5": true,
-      "bus": true,
+      "bus": false,
       "meals": true,
       "lat": 35.523838,
       "lng": 139.565445
@@ -4584,7 +4584,7 @@
       "accepts_3": true,
       "accepts_4": true,
       "accepts_5": true,
-      "bus": true,
+      "bus": false,
       "meals": false,
       "lat": 35.543022,
       "lng": 139.590347
@@ -4658,7 +4658,9 @@
       "capacity_4": 62,
       "capacity_5": 62,
       "lat": 35.549358,
-      "lng": 139.587234
+      "lng": 139.587234,
+      "bus_area": "4コース運行（アンパンマンバス2台）、バス停多数設置",
+      "bus_note": "バスルートマップは園公式サイト参照（suginomori.com/bus/）"
     },
     {
       "id": "f43479c1cd08",
@@ -4682,7 +4684,9 @@
       "capacity_4": 160,
       "capacity_5": 160,
       "lat": 35.526367,
-      "lng": 139.574326
+      "lng": 139.574326,
+      "bus_area": "都筑区内を巡回（通園バス運行）",
+      "bus_note": "令和8年度バス運行図は園HP参照（tsuda.ed.jp/features）"
     },
     {
       "id": "a0750913597f",
@@ -4701,7 +4705,9 @@
       "bus": true,
       "meals": true,
       "lat": 35.53867,
-      "lng": 139.550186
+      "lng": 139.550186,
+      "bus_area": "広範囲に複数台運行（川和町駅周辺含む）",
+      "bus_note": "延長保育後のバス送迎あり、詳細は園に要確認"
     },
     {
       "id": "78af335a53cf",
@@ -4720,7 +4726,9 @@
       "bus": true,
       "meals": true,
       "lat": 35.555988,
-      "lng": 139.604553
+      "lng": 139.604553,
+      "bus_area": "武蔵小杉〜新横浜 広範囲（鷺沼駅方面含む）",
+      "bus_note": "年度により運行範囲変動あり、詳細は園に要確認"
     },
     {
       "id": "c47d354babe1",
@@ -4739,7 +4747,9 @@
       "bus": true,
       "meals": true,
       "lat": 35.559563,
-      "lng": 139.587692
+      "lng": 139.587692,
+      "bus_area": "広範囲に運行（バス代月額4,000円）",
+      "bus_note": "ドライブスルー送迎も可能、詳細は園HP参照（mizuho.yamayuri.com）"
     },
     {
       "id": "300c368566d3",
@@ -4758,7 +4768,9 @@
       "bus": true,
       "meals": true,
       "lat": 35.537754,
-      "lng": 139.571869
+      "lng": 139.571869,
+      "bus_area": "",
+      "bus_note": "園バスあり、巡回エリアの詳細は園に要確認（exres.ed.jp）"
     },
     {
       "id": "53bfe0336384",
@@ -4824,7 +4836,9 @@
       "bus": true,
       "meals": true,
       "lat": 35.566174,
-      "lng": 139.571609
+      "lng": 139.571609,
+      "bus_area": "あざみ野・センター南 方面、多方面に頻繁運行",
+      "bus_note": "1回150円のバスチケットでスポット利用も可能"
     },
     {
       "id": "3c2475b8caae",
@@ -4843,7 +4857,9 @@
       "bus": true,
       "meals": true,
       "lat": 35.544888,
-      "lng": 139.599335
+      "lng": 139.599335,
+      "bus_area": "",
+      "bus_note": "園バスあり、巡回エリアの詳細は園に要確認"
     },
     {
       "id": "6ad9e85c6570",

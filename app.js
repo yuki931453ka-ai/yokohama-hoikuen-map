@@ -1348,6 +1348,7 @@ function createKgPopupContent(f) {
       <div class="popup-bus-info">
         <div class="popup-bus-label">🚌 園バスあり</div>
         <div class="popup-bus-area">巡回エリアの詳細は園にお問い合わせください</div>
+        ${f.bus_note ? `<div class="popup-bus-note">※ ${escHtml(f.bus_note)}</div>` : ""}
       </div>` : ""}
     ${f.address ? `<div class="popup-address">📍 ${escHtml(f.address)}</div>` : ""}
     ${f.tel ? `<div class="popup-tel">📞 ${escHtml(f.tel)}</div>` : ""}
