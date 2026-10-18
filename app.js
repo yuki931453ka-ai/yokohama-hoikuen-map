@@ -504,7 +504,7 @@ function renderMap() {
 function renderKgMap() {
   state.visibleFacilities.forEach(f => {
     const isKodomoen = f.type === "認定こども園";
-    const colorClass = isKodomoen ? "marker-kg-kodomoen" : "marker-kg-yochien";
+    const colorClass = f.bus ? "marker-kg-bus" : isKodomoen ? "marker-kg-kodomoen" : "marker-kg-yochien";
 
     const icon = L.divIcon({
       html: `<div class="${colorClass}"></div>`,
@@ -1339,6 +1339,16 @@ function createKgPopupContent(f) {
     <div class="popup-ward">${escHtml(f.ward)} ・ ${escHtml(f.type)} <span style="font-size:11px;color:#aaa;">（${escHtml(f.subsidy || "")}）</span></div>
     <div class="popup-badges">${badges.join("")}</div>
     <div style="font-size:12px;color:#666;margin:4px 0;">受入年齢: ${ageAccept.join("・") || "不明"}</div>
+    ${f.bus && f.bus_area ? `
+      <div class="popup-bus-info">
+        <div class="popup-bus-label">🚌 園バス巡回エリア</div>
+        <div class="popup-bus-area">${escHtml(f.bus_area)}</div>
+        ${f.bus_note ? `<div class="popup-bus-note">※ ${escHtml(f.bus_note)}</div>` : ""}
+      </div>` : f.bus ? `
+      <div class="popup-bus-info">
+        <div class="popup-bus-label">🚌 園バスあり</div>
+        <div class="popup-bus-area">巡回エリアの詳細は園にお問い合わせください</div>
+      </div>` : ""}
     ${f.address ? `<div class="popup-address">📍 ${escHtml(f.address)}</div>` : ""}
     ${f.tel ? `<div class="popup-tel">📞 ${escHtml(f.tel)}</div>` : ""}
     ${(() => {
@@ -1391,14 +1401,14 @@ function renderKgFacilityList(container) {
   const frag = document.createDocumentFragment();
   sorted.forEach(f => {
     const isKodomoen = f.type === "認定こども園";
-    const dotColor = isKodomoen ? "var(--color-kg-kodomoen)" : "var(--color-kg-yochien)";
+    const dotColor = f.bus ? "var(--color-kg-bus)" : isKodomoen ? "var(--color-kg-kodomoen)" : "var(--color-kg-yochien)";
 
     const card = document.createElement("div");
     card.className = "facility-card" + (f.id === state.selectedId ? " active" : "");
     card.dataset.id = f.id;
 
     const feats = [];
-    if (f.bus) feats.push('<span class="kg-feat-tag tag-bus">🚌 園バス</span>');
+    if (f.bus) feats.push(`<span class="kg-feat-tag tag-bus">🚌 園バス${f.bus_area ? "（" + escHtml(f.bus_area).substring(0,20) + "…）" : ""}</span>`);
     if (f.meals) feats.push('<span class="kg-feat-tag tag-meals">🍱 給食</span>');
     if (f.accepts_m3) feats.push('<span class="kg-feat-tag tag-m3">👶 満3歳</span>');
 
@@ -1438,7 +1448,9 @@ function updateKgStats() {
   const facs = state.visibleFacilities;
   const yochien = facs.filter(f => f.type !== "認定こども園").length;
   const kodomoen = facs.filter(f => f.type === "認定こども園").length;
+  const busCount = facs.filter(f => f.bus).length;
   document.getElementById("stat-kg-yochien").textContent = yochien;
   document.getElementById("stat-kg-kodomoen").textContent = kodomoen;
+  document.getElementById("stat-kg-bus").textContent = busCount;
   document.getElementById("stat-kg-total").textContent = facs.length;
 }
