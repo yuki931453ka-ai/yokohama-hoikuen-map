@@ -1,7 +1,7 @@
 /**
  * app.js
- * 横浜市保育園マップ - メインアプリケーションロジック
- * 月次データ対応版（令和7年4月〜令和8年2月）
+ * 横浜市保育園・幼稚園マップ - メインアプリケーションロジック
+ * 月次データ対応版（令和7年4月〜令和8年2月）+ 幼稚園モード
  */
 
 // ========================================
@@ -9,6 +9,9 @@
 // ========================================
 const YOKOHAMA_CENTER = [35.4437, 139.6380];
 const DEFAULT_ZOOM    = 12;
+
+// アプリモード: "nursery" or "kindergarten"
+let appMode = "nursery";
 
 const WARDS = [
   "鶴見区", "神奈川区", "西区", "中区", "南区",
@@ -92,6 +95,13 @@ const state = {
   selectedId:        null,
 
   homeLocation: null,  // { lat, lng, address }
+
+  // 幼稚園モード用
+  kgGeoData:       null,   // kindergartens_geo.json
+  kgFilterType:    "all",  // "all" | "幼稚園" | "認定こども園"
+  kgFilterBus:     false,
+  kgFilterMeals:   false,
+  kgFilterM3:      false,
 };
 
 // ========================================
@@ -105,6 +115,8 @@ let homeCircle = null;
 document.addEventListener("DOMContentLoaded", async () => {
   initMap();
   initUI();
+  initModeToggle();
+  initKindergartenFilters();
   initHome();
   await loadData();
   initMonthSlider();
@@ -292,12 +304,24 @@ async function loadData() {
       state.monthIdx = DEFAULT_MONTH_IDX;
     }
 
-    const geoRes = await fetch("data/nurseries_geo.json");
+    // 保育園・幼稚園データを並列読み込み
+    const [geoRes, kgRes] = await Promise.all([
+      fetch("data/nurseries_geo.json"),
+      fetch("data/kindergartens_geo.json"),
+    ]);
+
     if (geoRes.ok) {
       state.geoData = await geoRes.json();
     } else {
       showError("施設マスターデータが見つかりません。geocode.pyを実行してください。");
       state.geoData = { facilities: [] };
+    }
+
+    if (kgRes.ok) {
+      state.kgGeoData = await kgRes.json();
+      console.log(`[KG] 幼稚園データ読み込み完了: ${state.kgGeoData.facilities?.length || 0}件`);
+    } else {
+      state.kgGeoData = { facilities: [] };
     }
 
     // 最新月だけ先読み（他は遅延読み込み）
@@ -379,6 +403,10 @@ function getStatus(totals) {
 // フィルタリング
 // ========================================
 function applyFilters() {
+  if (appMode === "kindergarten") {
+    applyKindergartenFilters();
+    return;
+  }
   state.visibleFacilities = getMergedFacilities().filter(f => {
     if (f.lat == null || f.lng == null) return false;
     if (state.filterType !== "all" && f.type !== state.filterType) return false;
@@ -408,12 +436,44 @@ function applyFilters() {
   updateStats();
 }
 
+function applyKindergartenFilters() {
+  const allKg = state.kgGeoData?.facilities || [];
+  state.visibleFacilities = allKg.filter(f => {
+    if (f.lat == null || f.lng == null) return false;
+    if (state.kgFilterType !== "all" && f.type !== state.kgFilterType) return false;
+    if (state.filterWard !== "all" && f.ward !== state.filterWard) return false;
+    if (state.kgFilterBus && !f.bus) return false;
+    if (state.kgFilterMeals && !f.meals) return false;
+    if (state.kgFilterM3 && !f.accepts_m3) return false;
+
+    if (state.searchQuery) {
+      const q = state.searchQuery.toLowerCase();
+      if (!f.name.toLowerCase().includes(q) && !(f.address || "").toLowerCase().includes(q)) return false;
+    }
+
+    if (state.filterHomeRadius && state.homeLocation) {
+      const dist = calcDistanceKm(state.homeLocation.lat, state.homeLocation.lng, f.lat, f.lng);
+      if (dist > HOME_RADIUS_KM) return false;
+    }
+
+    return true;
+  });
+  renderMap();
+  renderSidebar();
+  updateKgStats();
+}
+
 // ========================================
 // 地図描画
 // ========================================
 function renderMap() {
   markerLayer.clearLayers();
   markerMap = {};
+
+  if (appMode === "kindergarten") {
+    renderKgMap();
+    return;
+  }
 
   state.visibleFacilities.forEach(f => {
     const totals = calcTotals(f, state.filterAges);
@@ -429,8 +489,34 @@ function renderMap() {
     });
 
     const marker = L.marker([f.lat, f.lng], { icon });
-    marker._facilityData = f;  // ルート検索用にデータを保持
+    marker._facilityData = f;
     marker.bindPopup(() => createPopupContent(f, totals), { maxWidth: 320, maxHeight: 400, autoPan: true, autoPanPaddingTopLeft: [10, 80], autoPanPaddingBottomRight: [10, 10] });
+    marker.on("click", () => {
+      clearRouteFromMap();
+      state.selectedId = f.id;
+      highlightCard(f.id);
+    });
+    markerLayer.addLayer(marker);
+    markerMap[f.id] = marker;
+  });
+}
+
+function renderKgMap() {
+  state.visibleFacilities.forEach(f => {
+    const isKodomoen = f.type === "認定こども園";
+    const colorClass = isKodomoen ? "marker-kg-kodomoen" : "marker-kg-yochien";
+
+    const icon = L.divIcon({
+      html: `<div class="${colorClass}"></div>`,
+      className: "",
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      popupAnchor: [0, -18],
+    });
+
+    const marker = L.marker([f.lat, f.lng], { icon });
+    marker._facilityData = f;
+    marker.bindPopup(() => createKgPopupContent(f), { maxWidth: 320, maxHeight: 400, autoPan: true, autoPanPaddingTopLeft: [10, 80], autoPanPaddingBottomRight: [10, 10] });
     marker.on("click", () => {
       clearRouteFromMap();
       state.selectedId = f.id;
@@ -516,6 +602,10 @@ function createPopupContent(f, totals) {
 // ========================================
 function renderSidebar() {
   const container = document.getElementById("facility-list");
+  if (appMode === "kindergarten") {
+    renderKgFacilityList(container);
+    return;
+  }
   if (state.activeTab === "list") renderFacilityList(container);
   else if (state.activeTab === "rank_ok")   renderRanking(container, "ok");
   else if (state.activeTab === "rank_wait") renderRanking(container, "wait");
@@ -1111,4 +1201,244 @@ function renderAISummaryCardHTML(facilityId) {
       <span class="ai-card-comment">${shortComment}</span>
       <span class="ai-ease-mini ${easeClass}">${ease}</span>
     </div>`;
+}
+
+// ========================================
+// モード切替
+// ========================================
+function initModeToggle() {
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const newMode = btn.dataset.mode;
+      if (newMode === appMode) return;
+      switchMode(newMode);
+    });
+  });
+}
+
+function switchMode(mode) {
+  appMode = mode;
+
+  document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+  document.querySelector(`.mode-btn[data-mode="${mode}"]`).classList.add("active");
+
+  const isKg = mode === "kindergarten";
+
+  document.body.classList.toggle("mode-kindergarten", isKg);
+
+  // フィルター表示切替
+  document.getElementById("nursery-filters").style.display = isKg ? "none" : "";
+  document.getElementById("kindergarten-filters").style.display = isKg ? "" : "none";
+
+  // 月次スライダー表示切替
+  document.getElementById("year-bar").style.display = isKg ? "none" : "";
+
+  // 統計・凡例切替
+  document.getElementById("map-stats").style.display = isKg ? "none" : "";
+  document.getElementById("map-stats-kg").style.display = isKg ? "" : "none";
+  document.getElementById("map-legend").style.display = isKg ? "none" : "";
+  document.getElementById("map-legend-kg").style.display = isKg ? "" : "none";
+
+  // タブ切替（幼稚園モードではリストタブのみ）
+  const tabBtns = document.getElementById("sidebar-tabs");
+  if (isKg) {
+    tabBtns.style.display = "none";
+    state.activeTab = "list";
+  } else {
+    tabBtns.style.display = "";
+  }
+
+  // ソートバー切替
+  const sortSelect = document.getElementById("sort-select");
+  if (isKg) {
+    sortSelect.innerHTML = `
+      <option value="name">施設名順</option>
+      <option value="ward">区順</option>
+      <option value="dist">自宅から近い順</option>
+    `;
+    state.sortKey = "name";
+  } else {
+    sortSelect.innerHTML = `
+      <option value="name">施設名順</option>
+      <option value="ward">区順</option>
+      <option value="ok">空き数が多い順</option>
+      <option value="wait">待ち数が多い順</option>
+      <option value="dist">自宅から近い順</option>
+    `;
+  }
+
+  // 注記切替
+  document.getElementById("app-notice-nursery").style.display = isKg ? "none" : "";
+  document.getElementById("app-notice-kg").style.display = isKg ? "" : "none";
+
+  clearRouteFromMap();
+  state.selectedId = null;
+  applyFilters();
+}
+
+// ========================================
+// 幼稚園フィルター初期化
+// ========================================
+function initKindergartenFilters() {
+  document.querySelectorAll(".kg-type-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".kg-type-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.kgFilterType = btn.dataset.kgtype;
+      applyFilters();
+    });
+  });
+
+  document.querySelectorAll(".kg-feat-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const feat = btn.dataset.kgfeat;
+      if (feat === "bus") state.kgFilterBus = !state.kgFilterBus;
+      if (feat === "meals") state.kgFilterMeals = !state.kgFilterMeals;
+      if (feat === "m3") state.kgFilterM3 = !state.kgFilterM3;
+      btn.classList.toggle("active");
+      applyFilters();
+    });
+  });
+}
+
+// ========================================
+// 幼稚園ポップアップ
+// ========================================
+function createKgPopupContent(f) {
+  const el = document.createElement("div");
+  el.className = "popup-inner";
+
+  const badges = [];
+  if (f.bus) badges.push('<span class="badge badge-bus">🚌 園バス</span>');
+  if (f.meals) badges.push('<span class="badge badge-meals">🍱 給食</span>');
+  if (f.accepts_m3) badges.push('<span class="badge badge-m3">👶 満3歳受入</span>');
+
+  const ageAccept = [];
+  if (f.accepts_m3) ageAccept.push("満3歳");
+  if (f.accepts_3) ageAccept.push("3歳");
+  if (f.accepts_4) ageAccept.push("4歳");
+  if (f.accepts_5) ageAccept.push("5歳");
+
+  const capHtml = f.capacity_total
+    ? `<div class="popup-kg-capacity">
+        <div style="font-size:12px;color:#888;margin-bottom:4px;">📊 定員情報（施設型給付園データ）</div>
+        <table class="popup-table">
+          <thead><tr><th>年齢</th><th>定員</th></tr></thead>
+          <tbody>
+            ${f.capacity_3 ? `<tr><th>3歳</th><td>${f.capacity_3}名</td></tr>` : ""}
+            ${f.capacity_4 ? `<tr><th>4歳</th><td>${f.capacity_4}名</td></tr>` : ""}
+            ${f.capacity_5 ? `<tr><th>5歳</th><td>${f.capacity_5}名</td></tr>` : ""}
+            <tr style="font-weight:700;background:#f0f4ff"><th>合計</th><td>${f.capacity_total}名</td></tr>
+          </tbody>
+        </table>
+      </div>`
+    : "";
+
+  el.innerHTML = `
+    <div class="popup-name">${escHtml(f.name)}</div>
+    <div class="popup-ward">${escHtml(f.ward)} ・ ${escHtml(f.type)} <span style="font-size:11px;color:#aaa;">（${escHtml(f.subsidy || "")}）</span></div>
+    <div class="popup-badges">${badges.join("")}</div>
+    <div style="font-size:12px;color:#666;margin:4px 0;">受入年齢: ${ageAccept.join("・") || "不明"}</div>
+    ${f.address ? `<div class="popup-address">📍 ${escHtml(f.address)}</div>` : ""}
+    ${f.tel ? `<div class="popup-tel">📞 ${escHtml(f.tel)}</div>` : ""}
+    ${(() => {
+      const di = getDistanceInfo(f);
+      if (!di) return "";
+      return `<div class="popup-distance">
+        <span class="popup-dist-val">📐 直線距離 ${formatDistance(di.distance)}</span>
+        <div class="popup-travel-times">
+          <span>🚶 ≈${formatTravelTime(di.walk)}</span>
+          <span>🚲 ≈${formatTravelTime(di.bicycle)}</span>
+          <span>🚗 ≈${formatTravelTime(di.car)}</span>
+        </div>
+      </div>
+      <div class="popup-route-section"></div>`;
+    })()}
+    ${capHtml}
+    <div class="popup-links">
+      <a class="popup-link popup-link-hp popup-link-search" href="https://www.google.com/search?q=${encodeURIComponent(f.name + ' 横浜市 公式サイト')}" target="_blank" rel="noopener">🔍 公式HP検索 ↗</a>
+      <a class="popup-link popup-link-review" href="https://www.google.com/search?q=${encodeURIComponent(f.name + ' 横浜市 口コミ 評判')}" target="_blank" rel="noopener">💬 口コミ検索 ↗</a>
+    </div>
+  `;
+  return el;
+}
+
+// ========================================
+// 幼稚園サイドバー
+// ========================================
+function renderKgFacilityList(container) {
+  const sorted = [...state.visibleFacilities]
+    .map(f => {
+      const _distInfo = getDistanceInfo(f);
+      return { ...f, _distInfo };
+    })
+    .sort((a, b) => {
+      switch (state.sortKey) {
+        case "ward": {
+          const c = (a.ward||"").localeCompare(b.ward||"","ja");
+          return c || (a.name||"").localeCompare(b.name||"","ja");
+        }
+        case "dist": return (a._distInfo?.distance ?? 999) - (b._distInfo?.distance ?? 999);
+        default: return (a.name||"").localeCompare(b.name||"","ja");
+      }
+    });
+
+  if (!sorted.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">条件に合う幼稚園が見つかりません</div></div>`;
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  sorted.forEach(f => {
+    const isKodomoen = f.type === "認定こども園";
+    const dotColor = isKodomoen ? "var(--color-kg-kodomoen)" : "var(--color-kg-yochien)";
+
+    const card = document.createElement("div");
+    card.className = "facility-card" + (f.id === state.selectedId ? " active" : "");
+    card.dataset.id = f.id;
+
+    const feats = [];
+    if (f.bus) feats.push('<span class="kg-feat-tag tag-bus">🚌 園バス</span>');
+    if (f.meals) feats.push('<span class="kg-feat-tag tag-meals">🍱 給食</span>');
+    if (f.accepts_m3) feats.push('<span class="kg-feat-tag tag-m3">👶 満3歳</span>');
+
+    const di = f._distInfo;
+    const distHtml = di ? `
+      <div class="card-distance">
+        <span class="card-dist-val">${formatDistance(di.distance)}</span>
+        <span class="card-travel">🚶${formatTravelTime(di.walk)}</span>
+        <span class="card-travel">🚲${formatTravelTime(di.bicycle)}</span>
+      </div>` : "";
+
+    const capHtml = f.capacity_total
+      ? `<div style="font-size:12px;color:#5577aa;margin-top:4px;">定員 ${f.capacity_total}名</div>`
+      : "";
+
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="card-status-dot" style="background:${dotColor}"></div>
+        <div class="card-name">${escHtml(f.name)}</div>
+        <div class="card-ward">${escHtml(f.ward)}</div>
+      </div>
+      ${distHtml}
+      <div class="kg-features">${feats.join("")}</div>
+      ${capHtml}
+    `;
+    card.addEventListener("click", () => focusFacility(f));
+    frag.appendChild(card);
+  });
+  container.innerHTML = "";
+  container.appendChild(frag);
+}
+
+// ========================================
+// 幼稚園統計
+// ========================================
+function updateKgStats() {
+  const facs = state.visibleFacilities;
+  const yochien = facs.filter(f => f.type !== "認定こども園").length;
+  const kodomoen = facs.filter(f => f.type === "認定こども園").length;
+  document.getElementById("stat-kg-yochien").textContent = yochien;
+  document.getElementById("stat-kg-kodomoen").textContent = kodomoen;
+  document.getElementById("stat-kg-total").textContent = facs.length;
 }

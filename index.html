@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>横浜市 保育園マップ 🍀</title>
+  <title>横浜市 保育園・幼稚園マップ 🍀</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,44 +37,68 @@
      ヘッダー
      ======================================== -->
 <header id="header">
-  <div id="header-logo">🍀 横浜保育園マップ</div>
+  <div id="header-logo">🍀 横浜保育園・幼稚園マップ</div>
+
+  <!-- モード切替トグル -->
+  <div id="mode-toggle">
+    <button class="mode-btn active" data-mode="nursery">🏠 保育園</button>
+    <button class="mode-btn" data-mode="kindergarten">🎒 幼稚園</button>
+  </div>
 
   <!-- スマホ専用：フィルター開閉ボタン -->
   <button id="filter-toggle-btn">🔧 絞込</button>
 
   <div id="filter-bar">
-    <!-- 施設種別 -->
-    <div class="filter-type-group">
-      <button class="filter-btn filter-type-btn active" data-type="all">全種別</button>
-      <button class="filter-btn filter-type-btn" data-type="認可保育所">認可保育所</button>
-      <button class="filter-btn filter-type-btn" data-type="小規模保育">小規模保育</button>
+    <!-- 保育園モード用フィルター -->
+    <div id="nursery-filters">
+      <!-- 施設種別 -->
+      <div class="filter-type-group">
+        <button class="filter-btn filter-type-btn active" data-type="all">全種別</button>
+        <button class="filter-btn filter-type-btn" data-type="認可保育所">認可保育所</button>
+        <button class="filter-btn filter-type-btn" data-type="小規模保育">小規模保育</button>
+      </div>
+
+      <!-- 空き状況 -->
+      <div class="filter-status-group">
+        <button class="filter-btn filter-status-btn active" data-status="all">全ての状況</button>
+        <button class="filter-btn filter-status-btn" data-status="ok">空きあり</button>
+        <button class="filter-btn filter-status-btn" data-status="waiting">待ちあり</button>
+      </div>
+
+      <!-- 年齢フィルター -->
+      <div id="age-filter" style="display:flex; gap:4px; align-items:center; flex-shrink:0; flex-wrap:wrap;">
+        <span style="font-size:12px; color:#888; white-space:nowrap;">年齢:</span>
+        <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="０歳"> 0歳</label>
+        <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="１歳"> 1歳</label>
+        <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="２歳"> 2歳</label>
+        <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="３歳"> 3歳</label>
+        <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="４歳"> 4歳</label>
+        <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="５歳"> 5歳</label>
+      </div>
+
+      <!-- 一時保育フィルター -->
+      <button class="filter-btn" id="filter-temp-btn">🧒 一時保育あり</button>
     </div>
 
+    <!-- 幼稚園モード用フィルター -->
+    <div id="kindergarten-filters" style="display:none;">
+      <div class="filter-type-group">
+        <button class="filter-btn kg-type-btn active" data-kgtype="all">全種別</button>
+        <button class="filter-btn kg-type-btn" data-kgtype="幼稚園">幼稚園</button>
+        <button class="filter-btn kg-type-btn" data-kgtype="認定こども園">認定こども園</button>
+      </div>
+      <div class="filter-kg-features" style="display:flex; gap:4px; flex-wrap:wrap;">
+        <button class="filter-btn kg-feat-btn" data-kgfeat="bus">🚌 園バスあり</button>
+        <button class="filter-btn kg-feat-btn" data-kgfeat="meals">🍱 給食あり</button>
+        <button class="filter-btn kg-feat-btn" data-kgfeat="m3">👶 満3歳受入</button>
+      </div>
+    </div>
+
+    <!-- 共通フィルター -->
     <!-- 区 -->
     <select class="filter-select" id="filter-ward">
       <option value="all">全ての区</option>
     </select>
-
-    <!-- 空き状況 -->
-    <div class="filter-status-group">
-      <button class="filter-btn filter-status-btn active" data-status="all">全ての状況</button>
-      <button class="filter-btn filter-status-btn" data-status="ok">空きあり</button>
-      <button class="filter-btn filter-status-btn" data-status="waiting">待ちあり</button>
-    </div>
-
-    <!-- 年齢フィルター -->
-    <div id="age-filter" style="display:flex; gap:4px; align-items:center; flex-shrink:0; flex-wrap:wrap;">
-      <span style="font-size:12px; color:#888; white-space:nowrap;">年齢:</span>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="０歳"> 0歳</label>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="１歳"> 1歳</label>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="２歳"> 2歳</label>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="３歳"> 3歳</label>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="４歳"> 4歳</label>
-      <label style="font-size:12px; white-space:nowrap; cursor:pointer;"><input type="checkbox" class="filter-age-cb" value="５歳"> 5歳</label>
-    </div>
-
-    <!-- 一時保育フィルター -->
-    <button class="filter-btn" id="filter-temp-btn">🧒 一時保育あり</button>
 
     <!-- 自宅設定 -->
     <button class="filter-btn" id="home-set-btn">🏠 自宅設定</button>
@@ -104,7 +128,7 @@
   <div id="map-container">
     <div id="map"></div>
 
-    <!-- 統計バッジ -->
+    <!-- 統計バッジ（保育園モード） -->
     <div id="map-stats">
       <div class="stat-badge">
         <div class="stat-dot" style="background:var(--color-ok)"></div>
@@ -120,7 +144,22 @@
       </div>
     </div>
 
-    <!-- 凡例 -->
+    <!-- 統計バッジ（幼稚園モード） -->
+    <div id="map-stats-kg" style="display:none;">
+      <div class="stat-badge">
+        <div class="stat-dot" style="background:var(--color-kg-yochien)"></div>
+        幼稚園 <strong id="stat-kg-yochien">0</strong>件
+      </div>
+      <div class="stat-badge">
+        <div class="stat-dot" style="background:var(--color-kg-kodomoen)"></div>
+        認定こども園 <strong id="stat-kg-kodomoen">0</strong>件
+      </div>
+      <div class="stat-badge stat-badge-total">
+        合計 <strong id="stat-kg-total">0</strong>件
+      </div>
+    </div>
+
+    <!-- 凡例（保育園モード） -->
     <div id="map-legend">
       <div class="legend-item">
         <div class="legend-dot dot-ok"></div>
@@ -133,6 +172,18 @@
       <div class="legend-item">
         <div class="legend-dot dot-waiting"></div>
         <span>待ちあり</span>
+      </div>
+    </div>
+
+    <!-- 凡例（幼稚園モード） -->
+    <div id="map-legend-kg" style="display:none;">
+      <div class="legend-item">
+        <div class="legend-dot dot-kg-yochien"></div>
+        <span>幼稚園</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot dot-kg-kodomoen"></div>
+        <span>認定こども園</span>
       </div>
     </div>
   </div>
@@ -176,9 +227,13 @@
 </div>
 
 <!-- 注記 -->
-<footer class="app-notice">
+<footer class="app-notice" id="app-notice-nursery">
   <p>※ 認可外保育施設は横浜市の公開データに含まれていないため、本マップには表示されません。</p>
   <p>※ AIまとめは口コミ・施設情報を基にAIが自動生成したものであり、内容の正確性を保証するものではありません。</p>
+</footer>
+<footer class="app-notice" id="app-notice-kg" style="display:none;">
+  <p>※ 幼稚園データは横浜市公式「幼稚園・認定こども園一覧」（2026年8月版）に基づきます。</p>
+  <p>※ 定員情報は横浜市オープンデータ（施設型給付園のみ）に基づくため、一部の園では表示されません。</p>
 </footer>
 
 <!-- ========================================

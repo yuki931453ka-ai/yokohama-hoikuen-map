@@ -1,5 +1,5 @@
 /* ========================================
-   横浜市保育園マップ - スタイルシート
+   横浜市保育園・幼稚園マップ - スタイルシート
    ファミリー・ママ向けデザイン
    ======================================== */
 
@@ -20,6 +20,10 @@
   --color-ok:      #7ED9A8;  /* 空きあり */
   --color-full:    #FFB347;  /* 満員 */
   --color-waiting: #FF8FA3;  /* 待ちあり */
+
+  /* 幼稚園マーカー色 */
+  --color-kg-yochien:  #6BA3E8;  /* 幼稚園 */
+  --color-kg-kodomoen: #B47DE8;  /* 認定こども園 */
 
   --radius-card: 16px;
   --radius-btn:  24px;
@@ -1410,3 +1414,163 @@ html, body {
 
 .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
 .empty-state-text { font-size: 14px; }
+
+/* ========================================
+   モード切替トグル
+   ======================================== */
+#mode-toggle {
+  display: flex;
+  gap: 0;
+  background: var(--color-bg);
+  border-radius: var(--radius-btn);
+  padding: 3px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+}
+
+.mode-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 20px;
+  background: transparent;
+  color: var(--color-text-light);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.mode-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(255,143,163,0.3);
+}
+
+.mode-btn[data-mode="kindergarten"].active {
+  background: var(--color-kg-yochien);
+  box-shadow: 0 2px 8px rgba(107,163,232,0.3);
+}
+
+.mode-btn:hover:not(.active) {
+  background: rgba(0,0,0,0.04);
+}
+
+/* ========================================
+   幼稚園モード凡例・マーカー
+   ======================================== */
+.dot-kg-yochien {
+  background: var(--color-kg-yochien);
+}
+.dot-kg-kodomoen {
+  background: var(--color-kg-kodomoen);
+}
+
+.marker-kg-yochien {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--color-kg-yochien);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  position: relative;
+}
+.marker-kg-yochien::after {
+  content: "🎒";
+  font-size: 13px;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.marker-kg-kodomoen {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--color-kg-kodomoen);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  position: relative;
+}
+.marker-kg-kodomoen::after {
+  content: "🏫";
+  font-size: 13px;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* 幼稚園フィルターボタン */
+.kg-feat-btn.active {
+  background: var(--color-kg-yochien);
+  color: #fff;
+  border-color: var(--color-kg-yochien);
+}
+.kg-type-btn.active {
+  background: var(--color-kg-yochien);
+  color: #fff;
+  border-color: var(--color-kg-yochien);
+}
+
+/* 幼稚園ポップアップバッジ */
+.badge-bus { background: #E8F4FD; color: #2E7DB3; }
+.badge-meals { background: #FFF3E0; color: #E07B00; }
+.badge-m3 { background: #F3E8FF; color: #8B5CF6; }
+
+/* 幼稚園カードの特徴タグ */
+.kg-features {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.kg-feat-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #f0f4ff;
+  color: #5577aa;
+  white-space: nowrap;
+}
+.kg-feat-tag.tag-bus { background: #E8F4FD; color: #2E7DB3; }
+.kg-feat-tag.tag-meals { background: #FFF3E0; color: #E07B00; }
+.kg-feat-tag.tag-m3 { background: #F3E8FF; color: #8B5CF6; }
+
+/* 幼稚園定員情報 */
+.kg-capacity {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.kg-cap-item {
+  font-size: 12px;
+  color: var(--color-text);
+}
+.kg-cap-label {
+  font-size: 11px;
+  color: var(--color-text-light);
+}
+.kg-cap-val {
+  font-weight: 700;
+  color: var(--color-kg-yochien);
+}
+
+/* 幼稚園モード時のヘッダーアクセント */
+body.mode-kindergarten #header {
+  border-bottom-color: #D0DFEF;
+  box-shadow: 0 2px 8px rgba(107,163,232,0.1);
+}
+body.mode-kindergarten #header-logo {
+  color: var(--color-kg-yochien);
+}
+
+/* レスポンシブ：モード切替 */
+@media (max-width: 768px) {
+  #mode-toggle {
+    order: -1;
+  }
+  .mode-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  #header-logo {
+    display: none;
+  }
+}
